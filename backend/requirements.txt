@@ -1,0 +1,9 @@
+fastapi 
+uvicorn
+sqlalchemy 
+asyncpg 
+langchain 
+python-dotenv
+httpx
+langchain
+langchain-google-genai
