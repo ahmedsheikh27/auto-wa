@@ -1,11 +1,11 @@
 import httpx
-from app.core.config import settings
+from app.core.config import Settings
 
-ACCESS_TOKEN = settings.ACCESS_TOKEN
-PHONE_NUMBER_ID = settings.PHONE_NUMBER_ID
+ACCESS_TOKEN = "EAAShzC0QhQgBRaHjdUrAuG8fiUSZBj1GWaaZBljccKxZCXgD9FPB6cU54KVT1ZCGVyj6cmJQDSFZA4N5ZBpGGnEQ4nnTc4xMiiqr5jHfabqPbPVVSX714bL7Jc1sQGulxHZCQ2686hHwsZBVIoQ8qSdkZC9ZCZB8y5m9x8yZAFduhB4w3QwLf4moYKYbrO2AxcIphgVLBFK8mH5sMxalpVMHw07iy99RtEiZB0UZAwxDQAMwoP"
+PHONE_NUMBER_ID = Settings.PHONE_NUMBER_ID
 
 async def send_whatsapp_message(to: str, message: str):
-    url = settings.WHATSAP_BASE_URL
+    url = f'https://graph.facebook.com/v25.0/{183261234863210}/messages'
 
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
