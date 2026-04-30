@@ -7,6 +7,8 @@ from app.core.config import Settings
 from app.models.tables import Message
 router = APIRouter()
 VERIFY_TOKEN = Settings.ACCESS_TOKEN
+
+
 @router.get("/webhook")
 async def verify(request: Request):
     mode = request.query_params.get("hub.mode")
@@ -30,21 +32,21 @@ async def save_message(db, phone, role, content):
         content=content
     )
     db.add(msg)
-    await db.commit()
+    db.commit()
 
 
 @router.post("/webhook")
 async def whatsapp_webhook(request: Request):
     data = await request.json()
 
-    print("\n📩 RAW WEBHOOK DATA:")
+    print("RAW WEBHOOK DATA:")
     print(data)
 
     try:
         value = data["entry"][0]["changes"][0]["value"]
 
         if "messages" not in value:
-            print("⚠️ No message found in payload")
+            print("No message found in payload")
             return {"status": "no message"}
 
         message = value["messages"][0]
@@ -52,23 +54,22 @@ async def whatsapp_webhook(request: Request):
         phone = message.get("from")
 
         if "text" not in message:
-            print(f"⚠️ Non-text message from {phone}")
+            print(f"Non-text message from {phone}")
             return {"status": "non-text ignored"}
 
         text = message["text"]["body"]
 
-        # 🔥 THIS IS WHAT YOU WANT
-        print(f"\n📱 Incoming from {phone}: {text}")
+        print(f"\n Incoming from {phone}: {text}")
 
-        async with SessionLocal() as db:
+        with SessionLocal() as db:
             reply = await process_message(db, phone, text)
 
-        print(f"🤖 Reply: {reply}\n")
+        print(f"Reply: {reply}\n")
 
         await send_whatsapp_message(phone, reply)
 
         return {"status": "ok"}
 
     except Exception as e:
-        print("❌ Error:", e)
+        print("Error:", e)
         return {"status": "error"}

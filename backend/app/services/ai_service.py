@@ -13,7 +13,7 @@ async def save_message(db, phone, role, content):
         content=content
     )
     db.add(msg)
-    await db.commit()
+    db.commit()
 
 def extract_json(text: str):
     try:
@@ -46,8 +46,7 @@ Respond ONLY in valid JSON:
 """
 
     response = llm.invoke(prompt)
-    content = response.content
-
+    content = response if isinstance(response, str) else getattr(response, "content", str(response))
     parsed = extract_json(content)
 
     if not parsed:
@@ -65,7 +64,7 @@ async def process_message(db, phone: str, message: str):
 
     # 🛒 PRODUCT SEARCH
     if intent == "PRODUCT_SEARCH":
-        products = await search_products(db, query)
+        products = search_products(db, query)
 
         if not products:
             return "Sorry, I couldn't find that product. Want me to suggest something similar? 👍"
@@ -87,7 +86,7 @@ async def process_message(db, phone: str, message: str):
         # ⚠️ TEMP HARDCODE (we fix in Step 8)
         address = "Not Provided"
 
-        order = await create_order(db, phone, query, address)
+        order = create_order(db, phone, query, address)
 
         return f"Your order for '{query}' has been placed 🎉\nWe will contact you shortly."
 

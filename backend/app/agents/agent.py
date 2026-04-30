@@ -2,10 +2,10 @@ from app.core.llm import get_llm
 
 llm = get_llm()
 
+
 def run_agent(message: str):
     # MVP: simple reasoning first (we will upgrade tools later)
-    
-    response = llm.invoke(f"""
+    prompt = f"""
 You are a WhatsApp sales assistant.
 
 User message:
@@ -17,6 +17,7 @@ Decide:
 3. Or FAQ?
 
 Reply like a helpful salesman.
-""")
+"""
+    response = llm.invoke(prompt)
 
-    return response.content
+    return response
