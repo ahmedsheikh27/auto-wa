@@ -7,3 +7,9 @@ def search_products(db, query: str):
     products = result.scalars().all()
 
     return products
+
+def get_all_products(db):
+    stmt = select(Product)
+    result = db.execute(stmt)
+    products = result.scalars.all()
+    return products

@@ -5,6 +5,7 @@ from app.services.whatsapp_service import send_whatsapp_message
 from app.db.session import SessionLocal
 from app.core.config import Settings
 from app.models.tables import Message
+from app.services.message_service import save_message
 router = APIRouter()
 VERIFY_TOKEN = Settings.ACCESS_TOKEN
 
@@ -62,7 +63,9 @@ async def whatsapp_webhook(request: Request):
         print(f"\n Incoming from {phone}: {text}")
 
         with SessionLocal() as db:
+            await save_message(db, phone, text, "user")
             reply = await process_message(db, phone, text)
+            await save_message(db, phone, reply, "bot")
 
         print(f"Reply: {reply}\n")
 

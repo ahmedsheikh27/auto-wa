@@ -7,6 +7,7 @@ class Order(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     product_name = Column(String)
+    product_id = Column(String)
     customer_phone = Column(String)
     address = Column(String)
     status = Column(String, default="pending")

@@ -10,5 +10,6 @@ class Settings:
     ACCESS_TOKEN = os.getenv("WHATSAPP_TOKEN")
     PHONE_NUMBER_ID = os.getenv("PHONE_ID")
     WHATSAP_BASE_URL = os.getenv("WHATSAP_BASE_URL")
+    HYGRAPH_URL = os.getenv("HYGRAPH_ENDPOINT")
 
 settings = Settings()
