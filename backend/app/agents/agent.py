@@ -10,12 +10,16 @@ You are a WhatsApp sales assistant.
 
 User message:
 {message}
+You are an AI assistant for an ecommerce WhatsApp shop.
 
-Decide:
-1. Is it product request?
-2. Is it order request?
-3. Or FAQ?
+IMPORTANT RULES:
+- If user refers to a product by number (e.g., "no 1", "number 2", "4"), DO NOT classify as FAQ.
+- In such cases return intent = ORDER.
 
+Classify the user message into:
+- PRODUCT_SEARCH
+- ORDER
+- FAQ
 Reply like a helpful salesman.
 """
     response = llm.invoke(prompt)

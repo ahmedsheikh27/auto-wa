@@ -76,3 +76,83 @@ async def get_product_by_slug(slug: str):
         )
 
     return res.json()["data"]["product"]
+
+# GET ALL COLLECTIONS
+async def get_collections():
+    query = """
+    query GetCollections {
+      collections(first: 100) {
+        id
+        title
+        slug
+        description
+        heding
+        bannerImage { url }
+      }
+    }
+    """
+
+    async with httpx.AsyncClient() as client:
+        res = await client.post(
+            HYGRAPH_URL,
+            json={"query": query},
+            headers=HEADERS
+        )
+
+    return res.json()["data"]["collections"]
+
+
+# SEARCH COLLECTIONS BY KEYWORD (client-side filtering)
+async def search_collections(query_text: str):
+    all_collections = await get_collections()
+
+    if not all_collections:
+        return []
+
+    query_lower = query_text.lower()
+    keywords = query_lower.split()
+
+    def score(col):
+        text = f"{col.get('title', '')} {col.get('description', '')} {col.get('heding', '')}".lower()
+        return sum(1 for kw in keywords if kw in text)
+
+    scored = sorted(all_collections, key=score, reverse=True)
+
+    # Return keyword matches, or all collections if nothing matched
+    filtered = [c for c in scored if score(c) > 0]
+    return filtered if filtered else all_collections
+
+
+# GET COLLECTION BY SLUG (with its products)
+async def get_collection_by_slug(slug: str):
+    query = """
+    query GetCollectionBySlug($slug: String!) {
+      collection(where: { slug: $slug }) {
+        id
+        title
+        slug
+        description
+        heding
+        bannerImage { url }
+        collectionProducts {
+          id
+          title
+          slug
+          description
+          images { url }
+        }
+      }
+    }
+    """
+
+    async with httpx.AsyncClient() as client:
+        res = await client.post(
+            HYGRAPH_URL,
+            json={
+                "query": query,
+                "variables": {"slug": slug}
+            },
+            headers=HEADERS
+        )
+
+    return res.json()["data"]["collection"]
