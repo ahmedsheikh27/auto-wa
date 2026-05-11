@@ -1,15 +1,20 @@
 from sqlalchemy import select
-from app.models.tables import Product
+from app.models.tables import Product, Collection
 
-def search_products(db, query: str):
-    stmt = select(Product).where(Product.name.ilike(f"%{query}%"))
+async def search_products(db, query: str):
+    stmt = select(Product).where(Product.title.ilike(f"%{query}%"))
     result = db.execute(stmt)
     products = result.scalars().all()
-
     return products
 
-def get_all_products(db):
-    stmt = select(Product)
+async def get_all_products(db):
+    return db.query(Product).all()
+
+async def search_collection_products(db, query: str):
+    stmt = ( select(Collection).where(Collection.title.ilike(f"%{query}%")))
     result = db.execute(stmt)
-    products = result.scalars.all()
-    return products
+    collections = result.scalars().all()
+    return collections
+
+async def get_all_collections(db):
+    return db.query(Collection).all()

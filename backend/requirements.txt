@@ -8,3 +8,5 @@ httpx
 langchain
 langchain-google-genai
 psycopg2-binary
+openai-agents
+openrouter

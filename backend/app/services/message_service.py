@@ -1,14 +1,18 @@
 from app.models.tables import Message
 from sqlalchemy import select
 
-async def save_message(db, phone, content, sender):
+from app.models.tables import Message
+
+def save_message(db, phone, role, content, user_id: int):
     msg = Message(
         phone=phone,
+        role=role,
         content=content,
-        sender=sender
+        user_id=user_id
     )
 
     db.add(msg)
+
     db.commit()
     db.refresh(msg)
 

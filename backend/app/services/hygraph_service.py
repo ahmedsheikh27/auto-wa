@@ -8,27 +8,25 @@ HEADERS = {
     # "Authorization": "Bearer YOUR_TOKEN" (if needed)
 }
 
+
 #  GET ALL PRODUCTS
 async def get_products():
     query = """
     query GetProducts {
-      products() {
+    products (first: 100){
         id
         title
         slug
         description
-      }
-    }
+  }
+}
     """
 
     async with httpx.AsyncClient() as client:
-        res = await client.post(
-            HYGRAPH_URL,
-            json={"query": query},
-            headers=HEADERS
-        )
+        res = await client.post(HYGRAPH_URL, json={"query": query}, headers=HEADERS)
 
     return res.json()["data"]["products"]
+
 
 async def search_products(query_text: str):
     query = """
@@ -45,14 +43,12 @@ async def search_products(query_text: str):
     async with httpx.AsyncClient() as client:
         res = await client.post(
             HYGRAPH_URL,
-            json={
-                "query": query,
-                "variables": {"q": query_text}
-            },
-            headers=HEADERS
+            json={"query": query, "variables": {"q": query_text}},
+            headers=HEADERS,
         )
 
     return res.json()["data"]["products"]
+
 
 async def get_product_by_slug(slug: str):
     query = """
@@ -68,14 +64,12 @@ async def get_product_by_slug(slug: str):
     async with httpx.AsyncClient() as client:
         res = await client.post(
             HYGRAPH_URL,
-            json={
-                "query": query,
-                "variables": {"slug": slug}
-            },
-            headers=HEADERS
+            json={"query": query, "variables": {"slug": slug}},
+            headers=HEADERS,
         )
 
     return res.json()["data"]["product"]
+
 
 # GET ALL COLLECTIONS
 async def get_collections():
@@ -93,34 +87,38 @@ async def get_collections():
     """
 
     async with httpx.AsyncClient() as client:
-        res = await client.post(
-            HYGRAPH_URL,
-            json={"query": query},
-            headers=HEADERS
-        )
+        res = await client.post(HYGRAPH_URL, json={"query": query}, headers=HEADERS)
 
     return res.json()["data"]["collections"]
 
 
 # SEARCH COLLECTIONS BY KEYWORD (client-side filtering)
 async def search_collections(query_text: str):
-    all_collections = await get_collections()
+    query = """
+    query GetCollections($q: String!) {
+      collections(where: { title_contains: $q }) {
+        id
+        title
+        slug
+        description
+        collectionProducts {
+          id
+          title
+          slug
+          description
+        }
+      }
+    }
+    """
 
-    if not all_collections:
-        return []
+    async with httpx.AsyncClient() as client:
+        res = await client.post(
+            HYGRAPH_URL,
+            json={"query": query, "variables": {"q": query_text}},
+            headers=HEADERS,
+        )
 
-    query_lower = query_text.lower()
-    keywords = query_lower.split()
-
-    def score(col):
-        text = f"{col.get('title', '')} {col.get('description', '')} {col.get('heding', '')}".lower()
-        return sum(1 for kw in keywords if kw in text)
-
-    scored = sorted(all_collections, key=score, reverse=True)
-
-    # Return keyword matches, or all collections if nothing matched
-    filtered = [c for c in scored if score(c) > 0]
-    return filtered if filtered else all_collections
+    return res.json()["data"]["collections"]
 
 
 # GET COLLECTION BY SLUG (with its products)
@@ -148,11 +146,8 @@ async def get_collection_by_slug(slug: str):
     async with httpx.AsyncClient() as client:
         res = await client.post(
             HYGRAPH_URL,
-            json={
-                "query": query,
-                "variables": {"slug": slug}
-            },
-            headers=HEADERS
+            json={"query": query, "variables": {"slug": slug}},
+            headers=HEADERS,
         )
 
     return res.json()["data"]["collection"]
