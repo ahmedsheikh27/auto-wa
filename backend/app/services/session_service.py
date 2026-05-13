@@ -1,11 +1,25 @@
-user_sessions = {}
+import json
+from app.core.redis import redis_client
 
-def get_session(phone: str):
-    return user_sessions.get(phone, {})
+SESSION_TTL = 1800 
 
-def update_session(phone: str, data: dict):
-    user_sessions[phone] = {**get_session(phone), **data}
+def save_session(customer_phone, data):
 
-def clear_session(phone: str):
-    if phone in user_sessions:
-        del user_sessions[phone]
+    redis_client.setex(
+        f"session:{customer_phone}",
+        SESSION_TTL,
+        json.dumps(data)
+    )
+
+def get_session(customer_phone):
+
+    data = redis_client.get(f"session:{customer_phone}")
+
+    if not data:
+        return None
+
+    return json.loads(data)
+
+def clear_session(customer_phone):
+
+    redis_client.delete(f"session:{customer_phone}")

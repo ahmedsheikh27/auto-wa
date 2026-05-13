@@ -3,8 +3,11 @@ from app.agents.faq_agent import faq_agent
 from app.agents.order_agent import order_agent
 from app.agents.product_agent import products_agent
 from app.core.config import Settings
+from app.services.session_service import get_session, save_session
 
 client = Settings.CLIENT
+
+
 def on_product_handoff(ctx: RunContextWrapper[None]):
     print("product agent active")
 
@@ -35,36 +38,59 @@ Rules:
 - Do not invent product, order, or policy data.
 """,
     model=OpenAIChatCompletionsModel(model="gemini-2.5-flash", openai_client=client),
-     handoffs=[
-        handoff(
-            products_agent,
-            on_handoff=on_product_handoff
-        ),
-
-        handoff(
-            order_agent,
-            on_handoff=on_order_handoff
-        ),
-
-        handoff(
-            faq_agent,
-            on_handoff=on_faq_handoff
-        ),
-    ]
+    handoffs=[
+        handoff(products_agent, on_handoff=on_product_handoff),
+        handoff(order_agent, on_handoff=on_order_handoff),
+        handoff(faq_agent, on_handoff=on_faq_handoff),
+    ],
 )
 print("main agent called")
 
 
-async def run_main_agent(message: str, customer_phone: str | None = None) -> str:
-    """
-    Execute the main agent and return plain text output.
-    """
-    user_input = message
-    if customer_phone:
-        user_input = f"Customer phone: {customer_phone}\nUser message: {message}"
+async def run_main_agent(
+    message: str,
+    customer_phone: str | None = None
+) -> str:
 
-    result = await Runner.run(main_agent, input=user_input)
-    final_output = getattr(result, "final_output", "")
-    if isinstance(final_output, str):
-        return final_output
-    return str(final_output)
+    session = get_session(customer_phone)
+
+    print(f"Session for {customer_phone}: {session}")
+
+    if not session:
+
+        session = {
+            "messages": [],
+            "cart": [],
+            "current_step": None,
+            "customer_phone": customer_phone
+        }
+
+    messages = session["messages"]
+
+    messages.append({
+        "role": "user",
+        "content": message
+    })
+
+    messages = messages[-20:]
+
+    session["messages"] = messages
+
+    result = await Runner.run(
+        main_agent,
+        input=messages
+    )
+
+    final_output = str(result.final_output)
+
+    # Add assistant response
+    messages.append({
+        "role": "assistant",
+        "content": final_output
+    })
+
+    session["messages"] = messages[-20:]
+
+    save_session(customer_phone, session)
+
+    return final_output
