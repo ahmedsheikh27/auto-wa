@@ -1,11 +1,17 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.db.session import get_db
-from app.services.message_service import get_messages
-from app.services.user_service import get_user
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+from agents import Runner
+from app.agents.main_agent import run_main_agent
 
 router = APIRouter(prefix="/messages", tags=["Messages"])
 
-@router.get("/")
-def list_messages(db: Session = Depends(get_db), phone: str = ''):
-    return get_user(db, phone)
+
+class MessageRequest(BaseModel):
+    message: str
+
+
+@router.post("/")
+async def send_messages(body: MessageRequest):
+    result = await run_main_agent(message=body.message, customer_phone='923231681378')
+    return {'response': result}
