@@ -7,7 +7,7 @@ load_dotenv()
 
 class Settings:
     DATABASE_URL = os.getenv("DATABASE_URL")
-    GOOGLE_API_KEY = "AIzaSyDJxcEwHEEmDx0PtP8ohBlZQqO4aFfNFNQ" #dev
+    GOOGLE_API_KEY = "AIzaSyBXhjzM9MWake47KrHe09ndacOTw0UHuTE" #dev
     ACCESS_TOKEN = os.getenv("WHATSAPP_TOKEN")
     PHONE_NUMBER_ID = os.getenv("PHONE_ID")
     WHATSAP_BASE_URL = os.getenv("WHATSAP_BASE_URL")
