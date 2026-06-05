@@ -1,16 +1,18 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from app.agents.main_agent import run_agent
+
+from agents import Runner
+from app.agents.main_agent import run_main_agent
 
 router = APIRouter(prefix="/messages", tags=["Messages"])
 
 
 class MessageRequest(BaseModel):
     message: str
-    phone: str | None = "test_user"
+    phone: str = "923231681378"
 
 
 @router.post("/")
 async def send_messages(body: MessageRequest):
-    result = await run_agent(message=body.message, customer_phone=body.phone)
-    return {"response": result}
+    result = await run_main_agent(message=body.message, customer_phone=body.phone)
+    return {'response': result}

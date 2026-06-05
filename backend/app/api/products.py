@@ -1,19 +1,19 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.services.product_service import search_products, get_all_products
+from app.sdk import create_sdk
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
 
 @router.get("/")
-async def list_products(db: Session = Depends(get_db)):
-    return await get_all_products(db)
+def list_products(db: Session = Depends(get_db)):
+    return create_sdk(db).products.list()
 
 
 @router.get("/search")
-async def search(db: Session = Depends(get_db), query: str = ""):
-    return await search_products(db, query)
+def search(db: Session = Depends(get_db), query: str = ""):
+    return create_sdk(db).products.search(query)
 
 
 # @router.get("/{slug}")

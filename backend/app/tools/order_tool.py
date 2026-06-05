@@ -1,13 +1,8 @@
 from agents import function_tool
 from app.db.session import SessionLocal
-from app.services.order_service import (
-    create_order,
-    get_orders_by_phone,
-    update_order_status,
-    get_order_summary
-)
 from typing import List
 from pydantic import BaseModel
+from app.sdk import create_sdk
 
 class OrderItemSchema(BaseModel):
     product_id: int
@@ -62,20 +57,12 @@ async def create_order_tool(
 
         print(f"Formatted items: {formatted_items}")
 
-        order = create_order(
-            db=db,
+        order = create_sdk(db).orders.create(
             user_id=user_id,
             items=formatted_items,
-            status=status,
             address=address,
+            status=status,
         )
-
-        if not order:
-            return {
-                "success": False,
-                "error": "Order creation failed - user or product not found",
-            }
-        order_summary = get_order_summary(db, order.id)
 
         print("order created successfully")
 
@@ -83,12 +70,12 @@ async def create_order_tool(
             "success": True,
             "message": "Order created successfully",
             "order": {
-                "order_id": order.id,
-                "user_id": order.user_id,
-                "status": order.status,
-                "address": order.address,
-                "items": order_summary["items"],
-                "created_at": str(order.created_at),
+                "order_id": order["id"],
+                "user_id": order["user_id"],
+                "status": order["status"],
+                "address": order["address"],
+                "items": order["items"],
+                "created_at": order["created_at"],
             },
         }
 
@@ -127,7 +114,7 @@ async def list_orders_by_phone_tool(customer_phone: str) -> dict:
 
     db = SessionLocal()
     try:
-        orders = get_orders_by_phone(db, phone=customer_phone)
+        orders = create_sdk(db).orders.list_by_phone(customer_phone)
 
         if not orders:
             return {
@@ -136,17 +123,12 @@ async def list_orders_by_phone_tool(customer_phone: str) -> dict:
                 "orders": []
             }
 
-        order_list = []
-        for order in orders:
-            order_summary = get_order_summary(db, order.id)
-            order_list.append(order_summary)
-
-        print(f"Found {len(order_list)} orders")
+        print(f"Found {len(orders)} orders")
 
         return {
             "success": True,
-            "message": f"Found {len(order_list)} orders",
-            "orders": order_list,
+            "message": f"Found {len(orders)} orders",
+            "orders": orders,
         }
 
     except Exception as exc:
@@ -182,7 +164,7 @@ async def update_order_status_tool(order_id: int, status: str) -> dict:
 
     db = SessionLocal()
     try:
-        order = update_order_status(db=db, order_id=order_id, status=status)
+        order = create_sdk(db).orders.update_status(order_id, status)
         
         if not order:
             return {
@@ -190,14 +172,12 @@ async def update_order_status_tool(order_id: int, status: str) -> dict:
                 "error": f"Order with ID {order_id} not found"
             }
 
-        order_summary = get_order_summary(db, order.id)
-
         print(f"order status updated")
 
         return {
             "success": True,
             "message": f"Order status updated to {status}",
-            "order": order_summary,
+            "order": order,
         }
 
     except Exception as exc:

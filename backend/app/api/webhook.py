@@ -1,19 +1,17 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import PlainTextResponse, Response
-from app.agents.main_agent import run_agent
+from app.agents.main_agent import run_main_agent
 from app.services.whatsapp_service import send_whatsapp_message
 from app.db.session import SessionLocal
 from app.core.config import Settings
-from app.services.message_service import save_message
+from app.sdk import create_sdk
 import hmac
 import hashlib
-from app.services.user_service import get_user, create_user
 
-router = APIRouter(prefix="/webhook", tags=["Webhook"])
-
+router = APIRouter()
 VERIFY_TOKEN = Settings.ACCESS_TOKEN
 APP_SECRET = Settings.APP_SECRET
-db = SessionLocal()
+router = APIRouter(prefix="/webhook", tags=["Webhook"])
 
 
 @router.get("/")
@@ -22,66 +20,77 @@ async def verify(request: Request):
     token = request.query_params.get("hub.verify_token")
     challenge = request.query_params.get("hub.challenge")
 
-    print(f"Verify: mode={mode} token={token}")
+    print(f"Got: mode={mode} token={token}")
 
     if mode == "subscribe" and token == VERIFY_TOKEN:
+        print("SUCCESS: Returning challenge")
         return PlainTextResponse(content=challenge, status_code=200)
 
+    print("FAIL: Token mismatch or wrong mode")
     return Response(status_code=403)
 
 
 @router.post("/")
 async def whatsapp_webhook(request: Request):
+    db = None
     signature = request.headers.get("X-Hub-Signature-256")
     raw_body = await request.body()
 
     if not signature:
         raise HTTPException(status_code=403, detail="No signature found")
-
     signature = signature.replace("sha256=", "")
     expected_sig = hmac.new(APP_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
 
     if not hmac.compare_digest(signature, expected_sig):
+        print("Security Alert: Signature mismatch")
         raise HTTPException(status_code=403, detail="Invalid signature")
 
     data = await request.json()
-    print("Webhook received:", data)
+    print("RAW WEBHOOK DATA:")
+    print(data)
 
     try:
+        db = SessionLocal()
+        sdk = create_sdk(db)
         value = data["entry"][0]["changes"][0]["value"]
 
         if "messages" not in value:
+            print("No message found in payload")
             return {"status": "no message"}
 
         message = value["messages"][0]
+
         phone = message.get("from")
         name = value.get("contacts", [{}])[0].get("profile", {}).get("name")
 
         if "text" not in message:
+            print(f"Non-text message from {phone}")
             return {"status": "non-text ignored"}
 
         text = message["text"]["body"]
-
-        # Get or create user
-        user = get_user(db, phone)
+        user = sdk.users.get_by_phone(phone)
         if not user:
-            user = create_user(db, user_phone=phone, user_name=name)
-            print(f"New user: {user.user_name} ({user.user_phone})")
+            print("No user found")
+            user = sdk.users.create(user_phone=phone, user_name=name)
+            print(
+                f"New User created: {user['user_name']} with phone: {user['user_phone']}"
+            )
+        user_id = user["id"]
+        print(f"User ID: {user_id}, Phone: {phone}")
 
-        print(f"Incoming [{phone}]: {text}")
-
-        save_message(db=db, phone=phone, role="user", content=text, user_id=user.id)
-
-        reply = await run_agent(text, customer_phone=phone)
-
-        save_message(db=db, phone=phone, role="bot", content=reply, user_id=user.id)
-
-        print(f"Reply: {reply}")
+        print(f"\n Incoming from {phone}: {text}")
+        sdk.messages.save(phone=phone, role="user", content=text, user_id=user_id)
+        reply = await run_main_agent(text, customer_phone=phone)
+        sdk.messages.save(phone=phone, role="bot", content=reply, user_id=user_id)
+        print(f"Reply: {reply}\n")
 
         await send_whatsapp_message(phone, reply)
 
         return {"status": "ok"}
 
     except Exception as e:
-        print("Webhook error:", e)
+        print("Error:", e)
         return {"status": "error"}
+    finally:
+        if db is not None:
+            db.close()

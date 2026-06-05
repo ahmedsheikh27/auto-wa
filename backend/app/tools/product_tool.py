@@ -1,11 +1,6 @@
 from agents import function_tool
-from app.services.product_service import (
-    get_all_products,
-    search_products,
-    get_all_collections,
-    search_collection_products,
-)
 from app.db.session import SessionLocal
+from app.sdk import create_sdk
 
 
 @function_tool(
@@ -22,20 +17,26 @@ async def product_search_tool(query: str):
     db = SessionLocal()
 
     try:
-        result = await search_products(db, query)
+        result = create_sdk(db).products.search(query)
 
         if not result:
             return "No products found, try different name or category."
 
         products = []
 
-        for i, p in enumerate(result, start=1):
-            products.append(f"{i}. {p.title} {p.id}")
+        for i, product in enumerate(result, start=1):
+            products.append(
+                f"{i}. {product['title']} "
+                f"(ID: {product['id']})\n"
+                f"{product.get('description') or ''}"
+            )
 
         return "\n".join(products)
 
     except Exception as exc:
         return {"success": False, "error": str(exc)}
+    finally:
+        db.close()
 
 
 
@@ -53,24 +54,26 @@ async def list_product_tool():
     db = SessionLocal()
 
     try:
-        result = await get_all_products(db)
+        result = create_sdk(db).products.list()
 
         if not result:
             return "No products in database."
 
         products = []
 
-        for i, p in enumerate(result, start=1):
+        for i, product in enumerate(result, start=1):
             products.append(
-                f"{i}. Product Name: {p.title}\n"
-                f"{i}. Product Name: {p.id}\n"
-                f"Product Desc: {p.description}\n"
+                f"{i}. Product Name: {product['title']}\n"
+                f"Product ID: {product['id']}\n"
+                f"Product Desc: {product.get('description') or ''}\n"
             )
 
         return "\n".join(products)
 
     except Exception as exc:
         return {"success": False, "error": str(exc)}
+    finally:
+        db.close()
 
 
 
@@ -88,23 +91,27 @@ async def list_collections_tool():
     db = SessionLocal()
 
     try:
-        result = await get_all_collections(db)
+        result = create_sdk(db).collections.list()
 
         if not result:
             return "No collection found."
 
         collections = []
 
-        for i, c in enumerate(result, start=1):
+        for i, collection in enumerate(result, start=1):
             collections.append(
-                f"{i}. Collection Name: {c.title}\n"
-                f"Collection Desc: {c.description}\n"
+                f"{i}. Collection Name: {collection['title']}\n"
+                f"Collection ID: {collection['id']}\n"
+                f"Collection Slug: {collection.get('slug') or ''}\n"
+                f"Collection Desc: {collection.get('description') or ''}\n"
             )
 
         return "\n".join(collections)
 
     except Exception as exc:
         return {"success": False, "error": str(exc)}
+    finally:
+        db.close()
 
 
 
@@ -122,7 +129,7 @@ async def search_collections_tool(query: str):
     db = SessionLocal()
 
     try:
-        collections = await search_collection_products(db, query)
+        collections = create_sdk(db).collections.search(query)
 
         if not collections:
             return "No collections found."
@@ -131,8 +138,8 @@ async def search_collections_tool(query: str):
 
         for collection in collections:
 
-            col_title = collection.title
-            col_products = collection.products
+            col_title = collection["title"]
+            col_products = collection["products"]
 
             if not col_products:
                 continue
@@ -141,9 +148,9 @@ async def search_collections_tool(query: str):
 
             for i, product in enumerate(col_products[:5], start=1):
                 response += (
-                    f"\n{i}. {product.title}\n"
-                    f"\n{i}. {product.id}\n"
-                    f"{product.description}\n"
+                    f"\n{i}. {product['title']}\n"
+                    f"ID: {product['id']}\n"
+                    f"{product.get('description') or ''}\n"
                 )
 
             responses.append(response)
@@ -157,3 +164,5 @@ async def search_collections_tool(query: str):
 
     except Exception as exc:
         return {"success": False, "error": str(exc)}
+    finally:
+        db.close()
